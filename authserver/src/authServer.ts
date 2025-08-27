@@ -1,22 +1,23 @@
-import express, { Request, Response, NextFunction } from 'express';
-import bodyParser from 'body-parser';
-import { createAuthMiddleware, AuthRequest } from '@bsv/auth-express-middleware';
-import { CompletedProtoWallet as Wallet, PrivateKey } from '@bsv/sdk';
+import express, { Request, Response, NextFunction } from 'express'
+import bodyParser from 'body-parser'
+import dotenv from 'dotenv'
+import { createAuthMiddleware, AuthRequest } from '@bsv/auth-express-middleware'
+import { Setup } from '@bsv/wallet-toolbox'
+import { Chain } from '@bsv/wallet-toolbox/out/src/sdk/types.js'
 
+dotenv.config()
 
+const {
+  SERVER_PRIVATE_KEY = '055d459c8d7cba2f8d22155093beb97848cf6b903f3af0a3c4eb45bac2dc236e',
+  WALLET_STORAGE_URL = 'https://storage.babbage.systems',
+  HTTP_PORT = 3000,
+  BSV_NETWORK = 'main',
+} = process.env
 
-const wallet = new Wallet(PrivateKey.fromHex('055d459c8d7cba2f8d22155093beb97848cf6b903f3af0a3c4eb45bac2dc236e'));
+const app = express()
+app.use(bodyParser.json())
 
-const authMiddleware = createAuthMiddleware({
-  wallet,
-  allowUnauthenticated: false
-})
-
-const app = express();
-app.use(bodyParser.json());
-
-// Hint: Add middleware to set Access-Control-Allow-* headers (Origin, Headers, Methods, Expose-Headers, Private-Network) and handle OPTIONS requests with a 200 status
- // This middleware sets CORS headers.
+// CORS middleware (simple allow-all)
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header('Access-Control-Allow-Headers', '*')
@@ -24,25 +25,36 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   res.header('Access-Control-Expose-Headers', '*')
   res.header('Access-Control-Allow-Private-Network', 'true')
   if (req.method === 'OPTIONS') {
-    res.sendStatus(200)
-  } else {
-    next()
+    return res.sendStatus(200)
   }
+  next()
 })
 
+async function init() {
+  const wallet = await Setup.createWalletClientNoEnv({
+    chain: BSV_NETWORK as Chain,
+    rootKeyHex: SERVER_PRIVATE_KEY,
+    storageUrl: WALLET_STORAGE_URL,
+  })
 
-app.get('/', (req: Request, res: Response) => {
-  res.send('Hello, world!');
-});
+  app.use(createAuthMiddleware({ wallet, allowUnauthenticated: false }))
 
+  app.get('/', (req: Request, res: Response) => {
+    res.send('Hello, world!')
+  })
 
-app.get('/protected', authMiddleware, (req: AuthRequest, res: Response) => {
-  if (req.auth && req.auth.identityKey !== 'unknown') {
-    return res.send(`You are authenticated: ${req.auth.identityKey}`)
-  }
-  res.status(401).send('Unauthorized')
-})
- 
-app.listen(3000, () => {
-  console.log('Server is running on port 3000');
-});
+  app.get('/protected', (req: AuthRequest, res: Response) => {
+    const identityKey = req.auth?.identityKey
+    if (identityKey && identityKey !== 'unknown') {
+      return res.send(`You are authenticated: ${identityKey}`)
+    }
+    return res.status(401).send('Unauthorized')
+  })
+
+  const port = Number(HTTP_PORT ?? 3000)
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`)
+  })
+}
+
+init()

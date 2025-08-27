@@ -11,7 +11,8 @@
         "provider": "LARS",
         "network": "mainnet",
         "run": [
-          "frontend"
+          "frontend",
+          "authserver"
         ]
       },
       {
@@ -20,7 +21,8 @@
         "CARSCloudURL": "https://cars.babbage.systems",
         "network": "mainnet",
         "deploy": [
-          "frontend"
+          "frontend",
+          "authserver"
         ],
         "projectID": "7a5630a2178b85ebbe070e42912b0d1d",
         "frontendHostingMethod": "HTTPS"
