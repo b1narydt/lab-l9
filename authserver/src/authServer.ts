@@ -4,6 +4,8 @@ import dotenv from 'dotenv'
 import { createAuthMiddleware, AuthRequest } from '@bsv/auth-express-middleware'
 import { Setup } from '@bsv/wallet-toolbox'
 import { Chain } from '@bsv/wallet-toolbox/out/src/sdk/types.js'
+import crypto from 'crypto'
+(global as any).self = { crypto }
 
 dotenv.config()
 
